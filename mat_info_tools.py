@@ -84,12 +84,31 @@ def plot_setup(
         plt.tight_layout()
 
 
-def export_df(df, filename, data_dir='data'):
+def export_df(df, filename, directory='data', export_index=True):
     """Export Pandas dataframe to CSV file"""
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-    df.to_csv(os.path.join(data_dir, filename))
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    df.to_csv(os.path.join(directory, filename),
+              index=export_index)
 
+    
+def import_df(filename, directory, index_col=0):
+    """Import Pandas dataframe from CSV file"""
+    return pd.read_csv(
+        os.path.join(directory, filename),
+        index_col=index_col)
+  
+
+
+
+def get_rmse(errors, round=3):
+    """Get the RMSE fo a sequence of errors"""
+    errors = np.array(errors).astype(np.float)
+    return np.round(
+    np.sqrt(np.mean(np.square(errors))),
+    decimals=3)
+
+    
 
 
 def featurize(
