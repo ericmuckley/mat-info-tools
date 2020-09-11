@@ -83,6 +83,56 @@ def plot_setup(
         fig.savefig(filename, dpi=250, bbox_inches='tight')
         plt.tight_layout()
 
+        
+        
+def df_to_heatmap(df, vmin=None, vmax=None, fontsize=14, colorbar=True,
+                  title=None, size=None, gridlines=True, show=False,
+                  gridcolor='gray', cmap='jet',
+                  savefig=False, filename='fig.jpg'):
+    '''
+    Plot a heatmap from 2D data in a Pandas DataFrame. The y-axis labels 
+    should be index names, and x-axis labels should be column names.
+    '''
+    # create plot
+    heatmap = plt.imshow(
+        df.values.astype(float),
+        cmap=cmap, vmin=vmin, vmax=vmax)
+    # plot labels on each axis
+    plt.yticks(np.arange(0, len(df.index), 1),
+               df.index, fontsize=fontsize)
+    plt.xticks(np.arange(0, len(df.columns), 1),
+               df.columns, rotation='vertical',
+               fontsize=fontsize)
+    if gridlines:
+        # create minor ticks, hide them, and use them as grid lines
+        plt.gca().set_xticks(
+            [
+                x - 0.5 for x in plt.gca().get_xticks()][1:],
+            minor='true')
+        plt.gca().set_yticks(
+            [
+                y - 0.5 for y in plt.gca().get_yticks()][1:],
+            minor='true')
+        plt.gca().tick_params(which='minor', length=0, color='k')
+        plt.grid(which='minor', color=gridcolor, lw=0.5)
+    if title:
+        plt.title(title, fontsize=fontsize+4)
+    if size:
+        plt.gcf().set_size_inches(size[0], size[1])
+    if colorbar:
+        plt.colorbar()
+    if savefig:
+        plt.gcf().savefig(filename, dpi=120, bbox_inches='tight')
+        plt.tight_layout()
+    if show:
+        plt.show()
+    else:
+        return heatmap       
+        
+        
+        
+        
+        
 
 def export_df(df, filename, directory='data', export_index=True):
     """Export Pandas dataframe to CSV file"""
@@ -118,7 +168,9 @@ def featurize(
     remove_nan_cols=True,
     remove_constant_cols=True,
     remove_nonnumeric_cols=True,
-    return_references=False,):
+    return_references=False,
+    n_jobs=None,
+    n_chunksize=None):
     """
     Featurization of cheical formulas for machine learning.
     Input a Pandas Dataframe with a column called formula_col,
@@ -202,9 +254,11 @@ def featurize(
     references = []
     for feat_type in feat_dict:
         for f in feat_dict[feat_type]:
-            # this required to prevent multithread hanging
-            f.set_n_jobs(1)
-            #f.set_chunksize(30)
+            # n_jobs == 1 is required to prevent multithread hanging
+            if n_jobs:
+                f.set_n_jobs(n_jobs)
+            if n_chunksize:
+                f.set_chunksize(n_chunksize)
 
             # implement feature            
             feat = f.featurize_dataframe(
