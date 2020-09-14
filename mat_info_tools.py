@@ -88,6 +88,7 @@ def plot_setup(
     limits=False,
     size=False,
     legend=True,
+    background=True,
     save=False,
     filename='plot.jpg',):
     """Creates a custom plot configuration to make graphs look nice.
@@ -108,6 +109,9 @@ def plot_setup(
     if limits:
         plt.xlim((limits[0], limits[1]))
         plt.ylim((limits[2], limits[3]))
+    if background:
+        plt.set_facecolor='w'
+        plt.set_edgecolor='w'
     if save:
         fig.savefig(filename,
                     facecolor=fig.get_facecolor(),
