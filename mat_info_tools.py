@@ -14,15 +14,22 @@ This module contains material informatics tools for:
 
 """
 
-
+# standard imports
 import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
+# for compiling plots into video
+import pygifsicle
+import imageio
+import glob
+
+
+# for featurizing materials data
 from matminer.featurizers.conversions import (
     StrToComposition, CompositionToOxidComposition)
-
 from matminer.featurizers.structure import DensityFeatures
 from matminer.featurizers.composition import (
     IonProperty, ElementFraction, TMetalFraction,
@@ -49,6 +56,28 @@ plt.rcParams.update({
     #'figure.dpi': dpi,
 })
 
+   
+def make_video(imagelist, fps=8, video_name='vid.mp4', reverse=False):
+    """Create a video from a stack of images.
+    For video name, use .mp4 or .gif extension."""  
+    if not os.path.exists('videos'):
+            os.makedirs('videos')
+    # sort and reverse if desired
+    imagelist = sorted(imagelist)
+    imagelist = imagelist[::-1] if reverse else imagelist
+    # loop over each frame and add to video
+    with imageio.get_writer(
+        os.path.join('videos', video_name),
+        mode='I',
+        fps=fps) as writer:
+        for i in range(len(imagelist)):
+            img = imageio.imread(imagelist[i])
+            writer.append_data(img)
+    # optimize to decrease gif file size (this is not required)
+    if video_name.endswith('gif'):
+        pygifsicle.optimize(os.path.join('videos', video_name))   
+    
+    
     
 def plot_setup(
     xlabel=False,
@@ -81,8 +110,7 @@ def plot_setup(
         plt.ylim((limits[2], limits[3]))
     if save:
         fig.savefig(filename, dpi=250, bbox_inches='tight')
-        plt.tight_layout()
-
+        #plt.tight_layout()
         
         
 def df_to_heatmap(df, vmin=None, vmax=None, fontsize=14, colorbar=True,
@@ -158,6 +186,10 @@ def get_rmse(errors, round=3):
     np.sqrt(np.mean(np.square(errors))),
     decimals=3)
 
+
+def normalize_vec(vec):
+    """Normalize a 1D vector from 0 to 1"""
+    return (vec - np.min(vec)) / (np.max(vec) - np.min(vec))
     
 
 
