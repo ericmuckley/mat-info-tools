@@ -109,7 +109,11 @@ def plot_setup(
         plt.xlim((limits[0], limits[1]))
         plt.ylim((limits[2], limits[3]))
     if save:
-        fig.savefig(filename, dpi=250, bbox_inches='tight')
+        fig.savefig(filename,
+                    facecolor=fig.get_facecolor(),
+                    edgecolor='none',
+                    dpi=250,
+                    bbox_inches='tight')
         #plt.tight_layout()
         
         
@@ -150,7 +154,11 @@ def df_to_heatmap(df, vmin=None, vmax=None, fontsize=14, colorbar=True,
     if colorbar:
         plt.colorbar()
     if savefig:
-        plt.gcf().savefig(filename, dpi=120, bbox_inches='tight')
+        plt.gcf().savefig(filename,
+                          dpi=120,
+                          facecolor=fig.get_facecolor(),
+                          edgecolor='none',
+                          bbox_inches='tight')
         plt.tight_layout()
     if show:
         plt.show()
