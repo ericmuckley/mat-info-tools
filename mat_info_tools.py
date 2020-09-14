@@ -53,6 +53,7 @@ plt.rcParams.update({
     'xtick.major.width': TICKWIDTH,
     'ytick.minor.width': TICKWIDTH,
     'ytick.major.width': TICKWIDTH,
+    'figure.facecolor': 'w',
     #'figure.dpi': dpi,
 })
 
@@ -72,7 +73,10 @@ def make_video(imagelist, fps=8, video_name='vid.mp4', reverse=False):
         fps=fps) as writer:
         for i in range(len(imagelist)):
             img = imageio.imread(imagelist[i])
-            writer.append_data(img)
+            try:
+                writer.append_data(img)
+            except ValueError:
+                print('{} failed'.format(imagelist[i]))
     # optimize to decrease gif file size (this is not required)
     if video_name.endswith('gif'):
         pygifsicle.optimize(os.path.join('videos', video_name))   
@@ -88,7 +92,6 @@ def plot_setup(
     limits=False,
     size=False,
     legend=True,
-    background=True,
     save=False,
     filename='plot.jpg',):
     """Creates a custom plot configuration to make graphs look nice.
@@ -109,16 +112,12 @@ def plot_setup(
     if limits:
         plt.xlim((limits[0], limits[1]))
         plt.ylim((limits[2], limits[3]))
-    if background:
-        plt.set_facecolor='w'
-        plt.set_edgecolor='w'
     if save:
+        plt.tight_layout()
         fig.savefig(filename,
-                    facecolor=fig.get_facecolor(),
-                    edgecolor='none',
                     dpi=250,
                     bbox_inches='tight')
-        #plt.tight_layout()
+        
         
         
 def df_to_heatmap(df, vmin=None, vmax=None, fontsize=14, colorbar=True,
