@@ -81,7 +81,7 @@ def make_video(imagelist, fps=8, video_name='vid.mp4', reverse=False):
     if video_name.endswith('gif'):
         pygifsicle.optimize(os.path.join('videos', video_name))   
     
-    
+ 
     
 def plot_setup(
     xlabel=False,
@@ -117,8 +117,22 @@ def plot_setup(
         fig.savefig(filename,
                     dpi=250,
                     bbox_inches='tight')
-        
-        
+
+
+
+def bar_plot(x, y, width=0.5, rotation=90):
+    """
+    Create bar plot instance. To change color of bars:
+    for b in bars:
+        b.set_color('r')
+    """
+    bars = plt.bar(np.arange(len(x)), y, width=width)
+    plt.gca().set_xticks(np.arange(len(x)))
+    plt.gca().set_xticklabels(list(x), rotation=rotation)
+    return bars
+
+
+
         
 def df_to_heatmap(df, vmin=None, vmax=None, fontsize=14, colorbar=True,
                   title=None, size=None, gridlines=True, show=False,
@@ -211,8 +225,7 @@ def featurize(
     remove_nan_cols=True,
     remove_constant_cols=True,
     remove_nonnumeric_cols=True,
-    return_references=False,
-    n_jobs=None,
+    n_jobs=1,
     n_chunksize=None):
     """
     Featurization of cheical formulas for machine learning.
@@ -254,6 +267,7 @@ def featurize(
     feat = stc.featurize_dataframe(
         feat,
         formula_col,
+        ignore_errors=True,
         pbar=pbar)
     # create oxide composition and add oxidation state
     # this line hangs on large molecules! (e.g. 'C60')
@@ -278,9 +292,9 @@ def featurize(
             Stoichiometry(),
             AtomicOrbitals(),
             TMetalFraction(),
-            CohesiveEnergy(),  # slow, hangs multithreading
+            #CohesiveEnergy(),  # slow, hangs multithreading
             ElementFraction(),
-            CohesiveEnergyMP(),  # slow, hangs multithreading
+            #CohesiveEnergyMP(),  # slow, hangs multithreading
             Miedema(),
             YangSolidSolution(),  # slow, hangs multithreading
             AtomicPackingEfficiency(),
