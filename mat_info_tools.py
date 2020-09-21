@@ -120,12 +120,14 @@ def plot_setup(
 
 
 
-def bar_plot(x, y, width=0.5, rotation=90):
+def bar_plot(x, y, n=50, width=0.5, rotation=90):
     """
     Create bar plot instance. To change color of bars:
     for b in bars:
         b.set_color('r')
+    Use 'n' argument to limit the number of bars shown.
     """
+    x, y = x[:n], y[:n]
     bars = plt.bar(np.arange(len(x)), y, width=width)
     plt.gca().set_xticks(np.arange(len(x)))
     plt.gca().set_xticklabels(list(x), rotation=rotation)
@@ -292,11 +294,11 @@ def featurize(
             Stoichiometry(),
             AtomicOrbitals(),
             TMetalFraction(),
-            #CohesiveEnergy(),  # slow, hangs multithreading
+            CohesiveEnergy(),  # slow, hangs multithreading
             ElementFraction(),
-            #CohesiveEnergyMP(),  # slow, hangs multithreading
+            CohesiveEnergyMP(),  # slow, hangs multithreading
             Miedema(),
-            YangSolidSolution(),  # slow, hangs multithreading
+            YangSolidSolution(),
             AtomicPackingEfficiency(),
             #ValenceOrbital(),  # already used in AtomicOrbitals()
         ],
