@@ -91,7 +91,7 @@ def plot_setup(
     legend_fontsize=12,
     limits=False,
     size=False,
-    legend=True,
+    legend=False,
     save=False,
     filename='plot.jpg',):
     """Creates a custom plot configuration to make graphs look nice.
@@ -128,9 +128,11 @@ def bar_plot(x, y, n=50, width=0.5, rotation=90):
     Use 'n' argument to limit the number of bars shown.
     """
     x, y = x[:n], y[:n]
+    ha = 'center' if (rotation == 90) else 'right'
     bars = plt.bar(np.arange(len(x)), y, width=width)
     plt.gca().set_xticks(np.arange(len(x)))
-    plt.gca().set_xticklabels(list(x), rotation=rotation)
+    plt.gca().set_xticklabels(list(x), rotation=rotation, ha=ha)
+    plt.gca().set_xlim([-1, len(x)])
     return bars
 
 
