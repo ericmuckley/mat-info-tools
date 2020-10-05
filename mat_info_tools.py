@@ -136,6 +136,19 @@ def bar_plot(x, y, n=50, width=0.5, rotation=90):
     return bars
 
 
+def bar_plot_h(x, y, n=30, height=0.5):
+    """
+    Create horizonatal bar plot instance. To change color of bars:
+    for b in bars:
+        b.set_color('r')
+    Use 'n' argument to limit the number of bars shown.
+    """
+    x, y = x[:n], y[:n]
+    bars = plt.barh(np.arange(len(x)), y[::-1], height=0.5)
+    plt.gca().set_yticks(np.arange(len(x)))
+    plt.gca().set_yticklabels(list(x)[::-1])
+    plt.gca().set_ylim([-1, len(x)])
+    return bars[::-1]
 
         
 def df_to_heatmap(df, vmin=None, vmax=None, fontsize=14, colorbar=True,
@@ -292,7 +305,7 @@ def featurize(
             element_property,
             Meredig(),
             BandCenter(),
-            IonProperty(),
+            IonProperty(), # slow
             Stoichiometry(),
             AtomicOrbitals(),
             TMetalFraction(),
@@ -309,7 +322,8 @@ def featurize(
             ElectronegativityDiff(),
             ElectronAffinity(),
             DensityFeatures(),  
-        ]}
+        ]
+    }
 
     # loop over each feature and add it to the dataframe
     references = []
