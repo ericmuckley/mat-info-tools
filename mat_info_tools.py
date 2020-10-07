@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 import pygifsicle
 import imageio
 import glob
+import json
 
 
 # for featurizing materials data
@@ -58,6 +59,16 @@ plt.rcParams.update({
 })
 
    
+def read_json_file(filepath):
+    """Import JSON file as a Python dictionary"""
+    with open(filepath) as j:    
+        d = json.load(j)
+    return d
+   
+    
+    
+    
+    
 def make_video(imagelist, fps=8, video_name='vid.mp4', reverse=False):
     """Create a video from a stack of images.
     For video name, use .mp4 or .gif extension."""  
