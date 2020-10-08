@@ -244,7 +244,9 @@ def normalize_vec(vec):
     """Normalize a 1D vector from 0 to 1"""
     return (vec - np.min(vec)) / (np.max(vec) - np.min(vec))
     
-
+def norm_df(df):
+    """Normalize all columns of a pandas dataframe"""
+    return (df - df.min()) / (df.max() - df.min())
 
 def featurize(
     df,
@@ -254,7 +256,8 @@ def featurize(
     remove_constant_cols=True,
     remove_nonnumeric_cols=True,
     n_jobs=1,
-    n_chunksize=None):
+    n_chunksize=None,
+    fast=False,):
     """
     Featurization of cheical formulas for machine learning.
     Input a Pandas Dataframe with a column called formula_col,
@@ -264,6 +267,9 @@ def featurize(
     from the matminer package. Returns the dataframe with chemical
     formulas and features, and a list of references
     to papers which describe the featurization methods used.
+    
+    Use 'fast' argument to run featurization with less
+    features, but very quickly for large datasets.
 
     To prevent issues with multithreading, set n_jobs=1.
 
@@ -297,44 +303,49 @@ def featurize(
         formula_col,
         ignore_errors=True,
         pbar=pbar)
-    # create oxide composition and add oxidation state
-    # this line hangs on large molecules! (e.g. 'C60')
-    ctoc = CompositionToOxidComposition()
-    ctoc.set_n_jobs(1)
-    feat = ctoc.featurize_dataframe(
-        feat,
-        "composition",
-        ignore_errors=True,
-        pbar=pbar)
+    
+    if not fast:
+        # create oxide composition and add oxidation state
+        # this line hangs on large molecules! (e.g. 'C60')
+        ctoc = CompositionToOxidComposition()
+        ctoc.set_n_jobs(1)
+        feat = ctoc.featurize_dataframe(
+            feat,
+            "composition",
+            ignore_errors=True,
+            pbar=pbar)
+        
     # add element property featurizer
     element_property = ElementProperty.from_preset(
         preset_name="magpie")
 
-    # features related to composition and oxidation
-    feat_dict = {
-        'composition': [
-            element_property,
-            Meredig(),
-            BandCenter(),
+    # basic features
+    feat_dict = {'composition': [
+        element_property,
+        BandCenter(),
+        Stoichiometry(),
+        AtomicOrbitals(),
+        #TMetalFraction(),
+        #ElementFraction(),
+        #Miedema(),
+        #YangSolidSolution(),
+    ]}
+
+    # add more features for slower featurization
+    if not fast:
+        feat_dict['composition'] += [  
+            Meredig(), # slow
             IonProperty(), # slow
-            Stoichiometry(),
-            AtomicOrbitals(),
-            TMetalFraction(),
             CohesiveEnergy(),  # slow, hangs multithreading
-            ElementFraction(),
             CohesiveEnergyMP(),  # slow, hangs multithreading
-            Miedema(),
-            YangSolidSolution(),
             AtomicPackingEfficiency(),
-            #ValenceOrbital(),  # already used in AtomicOrbitals()
-        ],
-        'composition_oxid': [
-            OxidationStates(),
+            ] #ValenceOrbital(),  # already used in AtomicOrbitals()
+        feat_dict['composition_oxid'] = [OxidationStates(),
             ElectronegativityDiff(),
             ElectronAffinity(),
-            DensityFeatures(),  
+            DensityFeatures(),
         ]
-    }
+
 
     # loop over each feature and add it to the dataframe
     references = []
