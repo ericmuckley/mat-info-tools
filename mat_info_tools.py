@@ -16,6 +16,7 @@ This module contains material informatics tools for:
 
 # standard imports
 import os
+import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -288,13 +289,32 @@ def normalize_vec(vec):
     """Normalize a 1D vector from 0 to 1"""
     return (vec - np.min(vec)) / (np.max(vec) - np.min(vec))
     
+
 def norm_df(df):
-    """Normalize all columns of a pandas dataframe"""
-    return (df - df.min()) / (df.max() - df.min())
+    """Normalize all columns of a pandas dataframe. Ignore string columns and
+    constant columns."""
+    # loop over each dataframe column
+    for c in df.columns:
+        # if column is not constant
+        if df[c].min() != df[c].max():
+            # try normalizing
+            try:
+                df[c] = (df[c] - df[c].min()) / (df[c].max() - df[c].min())
+            # if it is a string column, ignore it
+            except TypeError:
+                pass
+        # if column is constant, ignore it
+        else:
+            pass
+    return df
+
+
+
 
 def featurize(
     df,
     formula_col='formula',
+    metadata_cols=[],
     pbar=True,
     remove_nan_cols=True,
     remove_constant_cols=True,
@@ -311,6 +331,9 @@ def featurize(
     from the matminer package. Returns the dataframe with chemical
     formulas and features, and a list of references
     to papers which describe the featurization methods used.
+    
+    To add metadata columns from original dataframe to featurized
+    dataframe, use metadata_cols argument.
     
     Use 'fast' argument to run featurization with less
     features, but very quickly for large datasets.
@@ -333,6 +356,7 @@ def featurize(
     Matminer notebook examples:
     https://github.com/hackingmaterials/matminer_examples
     """
+    starttime = time.time()
     if formula_col not in list(df):
         raise KeyError(
             'Data does not contain {} column.'.format(formula_col))
@@ -423,8 +447,20 @@ def featurize(
         feat = feat.select_dtypes(include=[np.number])
     # remove empty references
     references = [r[0] for r in references if r]
+    
+    # add metadata to featurized data
+    for c in metadata_cols:
+        # if its already there, update it
+        if c in feat.columns:
+            feat[c] = np.array(df[c])
+        # if not, insert it at the front
+        else:
+            feat.insert(0, c, np.array(df[c]))
+    
     print('Kept {} / {} new features for {} materials.'.format(
-        len(list(feat)), num_new_features, len(feat)))    
+        len(list(feat)), num_new_features, len(feat)))
+    print('Featurization time: {} min'.format(
+        round((time.time() - starttime)/60, 2)))
     return feat, references
 
 
