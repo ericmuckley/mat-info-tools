@@ -62,11 +62,15 @@ plt.rcParams.update({
    
 def read_json_file(filepath):
     """Import JSON file as a Python dictionary"""
-    with open(filepath) as j:    
-        d = json.load(j)
+    try:
+        with open(filepath, encoding='utf-8') as j:
+            d = json.load(j)
+    except UnicodeDecodeError:
+        with open(filepath, encoding='latin-1') as j:
+            d = json.load(j)
     return d
    
-    
+
     
     
     
