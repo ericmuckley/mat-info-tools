@@ -277,16 +277,14 @@ def import_df(filename, directory, index_col=0):
     return pd.read_csv(
         os.path.join(directory, filename),
         index_col=index_col)
-  
 
 
-
-def get_rmse(errors, round=3):
+def get_rmse(errors, rounding=3):
     """Get the RMSE fo a sequence of errors"""
     errors = np.array(errors).astype(np.float)
     return np.round(
-    np.sqrt(np.mean(np.square(errors))),
-    decimals=3)
+        np.sqrt(np.mean(np.square(errors))),
+        decimals=rounding)
 
 
 def normalize_vec(vec):
@@ -294,9 +292,10 @@ def normalize_vec(vec):
     return (vec - np.min(vec)) / (np.max(vec) - np.min(vec))
     
 
-def norm_df(df):
+def norm_df(df0):
     """Normalize all columns of a pandas dataframe. Ignore string columns and
     constant columns."""
+    df = df0.copy()
     # loop over each dataframe column
     for c in df.columns:
         # if column is not constant
