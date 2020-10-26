@@ -292,12 +292,12 @@ def normalize_vec(vec):
     return (vec - np.min(vec)) / (np.max(vec) - np.min(vec))
     
 
-def norm_df(df0):
+def norm_df(df0, ignore_cols=[]):
     """Normalize all columns of a pandas dataframe. Ignore string columns and
-    constant columns."""
+    constant columns, and columns in ignore_cols argument."""
     df = df0.copy()
     # loop over each dataframe column
-    for c in df.columns:
+    for c in [cc for cc in df.columns if cc not in ignore_cols]:
         # if column is not constant
         if df[c].min() != df[c].max():
             # try normalizing
