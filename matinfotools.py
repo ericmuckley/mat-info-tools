@@ -45,8 +45,8 @@ from matminer.featurizers.composition import (
 
 # change matplotlib settings to make plots look nicer
 FONTSIZE=16
-LINEWIDTH=2
-TICKWIDTH=2
+LINEWIDTH=1
+TICKWIDTH=1
 plt.rcParams.update({
     'xtick.labelsize': FONTSIZE,
     'ytick.labelsize': FONTSIZE,
