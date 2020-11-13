@@ -20,7 +20,8 @@ import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from sklearn.preprocessing import PolynomialFeatures
+from scipy.stats import stats
 
 # for compiling plots into video
 import pygifsicle
@@ -45,8 +46,8 @@ from matminer.featurizers.composition import (
 
 # change matplotlib settings to make plots look nicer
 FONTSIZE=16
-LINEWIDTH=1
-TICKWIDTH=1
+LINEWIDTH=2
+TICKWIDTH=2
 plt.rcParams.update({
     'xtick.labelsize': FONTSIZE,
     'ytick.labelsize': FONTSIZE,
@@ -59,6 +60,48 @@ plt.rcParams.update({
     #'figure.dpi': dpi,
 })
 
+
+
+def create_polynomial_features(df, cols, target, order=3, display=100):
+    """
+    Generate new features (columns) of a dataframe using polynomial
+    combinations of existing column names. The purpose is to try to
+    find new features which are highly correlated with a target column
+    in the dataframe.
+    Inputs:
+    df: dataframe
+    cols: list of column names to combine
+    target: target column for which to correlate with new features
+    order: polynomial order for combinations (over three takes hours)
+    display: number of new feature correlations to print upon completion
+    Returns: Dict with new column names sorted by their r^2 correlation with target
+    """
+    starttime = time.time()
+    # instantiate polynomial feature model
+    polyfeats = PolynomialFeatures(order, include_bias=False)
+    # inputs for poly feats 
+    inputs = df[cols]
+    # get names and array of values of new features
+    polyfeat_array = polyfeats.fit_transform(inputs.values)
+    polyfeat_names = polyfeats.get_feature_names(inputs.columns)
+    # loop over new features and get their correlation to target variable
+    polyfeat_dict = {}
+    for i, n in enumerate(polyfeat_names):
+        # if feature looks new, save it to dict with its correlation coefficient
+        if not any([np.allclose(polyfeat_array[:, i], df[j]) for j in cols]):
+            # find r^2 correlation of new feature with target
+            r2 = np.square(stats.pearsonr(polyfeat_array[:, i], df[target])[0])
+            polyfeat_dict[n] = r2
+    # sort polyfeature dict by correlations
+    polyfeat_dict = {k: v for k, v in sorted(
+        polyfeat_dict.items(), key=lambda item: item[1], reverse=True)}
+    print('Total runtime: {} min'.format(round((time.time() - starttime)/60, 2)))
+    print('{} total Pearson r^2 correlation coefficients:'.format(len(polyfeat_dict)))
+    for k in list(polyfeat_dict)[:100]:
+        print('{:6}   {}'.format(round(polyfeat_dict[k], 5), k))
+    return polyfeat_dict
+
+
    
 def read_json_file(filepath):
     """Import JSON file as a Python dictionary"""
@@ -70,6 +113,17 @@ def read_json_file(filepath):
             d = json.load(j)
     return d
    
+
+def hide_plot_borders():
+    """Hide plot matplotlib borders and ticks. Run this
+    function just before setting plot axis labels and
+    before plt.show()."""
+    plt.gca().set_xticks([])
+    plt.gca().set_yticks([])
+    plt.gca().spines['top'].set_visible(False)
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['bottom'].set_visible(False)
+    plt.gca().spines['left'].set_visible(False)
 
     
     
