@@ -24,24 +24,30 @@ from sklearn.preprocessing import PolynomialFeatures
 from scipy.stats import stats
 
 # for compiling plots into video
-import pygifsicle
-import imageio
-import glob
-import json
+try:
+    import pygifsicle
+    import imageio
+    import glob
+    import json
+except ImportError:
+    print('Video packages not avilable')
+    
 
-
-# for featurizing materials data
-from matminer.featurizers.conversions import (
-    StrToComposition, CompositionToOxidComposition)
-from matminer.featurizers.structure import DensityFeatures
-from matminer.featurizers.composition import (
-    IonProperty, ElementFraction, TMetalFraction,
-    Miedema, YangSolidSolution, AtomicPackingEfficiency,
-    ElementProperty, Meredig, OxidationStates, AtomicOrbitals,
-    BandCenter, ElectronegativityDiff, ElectronAffinity, Stoichiometry,
-    CohesiveEnergy, CohesiveEnergyMP,
-    # ValenceOrbital,
-    )
+try:
+    # for featurizing materials data
+    from matminer.featurizers.conversions import (
+        StrToComposition, CompositionToOxidComposition)
+    from matminer.featurizers.structure import DensityFeatures
+    from matminer.featurizers.composition import (
+        IonProperty, ElementFraction, TMetalFraction,
+        Miedema, YangSolidSolution, AtomicPackingEfficiency,
+        ElementProperty, Meredig, OxidationStates, AtomicOrbitals,
+        BandCenter, ElectronegativityDiff, ElectronAffinity, Stoichiometry,
+        CohesiveEnergy, CohesiveEnergyMP,
+        # ValenceOrbital,
+        )
+except ImportError:
+    print('Matminer not avilable')
 
 
 # change matplotlib settings to make plots look nicer
