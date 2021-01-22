@@ -387,7 +387,7 @@ def featurize(
     n_chunksize=None,
     fast=False,):
     """
-    Featurization of cheical formulas for machine learning.
+    Featurization of chemical formulas for machine learning.
     Input a Pandas Dataframe with a column called formula_col,
     which contains chemical formulas (e.g. ['Mg', 'TiO2']).
     Other columns may contain additional descriptors.
