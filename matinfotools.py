@@ -378,11 +378,9 @@ def norm_df(df0, ignore_cols=[]):
 def featurize(
     df,
     formula_col='formula',
-    metadata_cols=[],
     pbar=True,
     remove_nan_cols=True,
     remove_constant_cols=True,
-    remove_nonnumeric_cols=True,
     n_jobs=1,
     n_chunksize=None,
     fast=False,):
@@ -396,9 +394,6 @@ def featurize(
     formulas and features, and a list of references
     to papers which describe the featurization methods used.
     
-    To add metadata columns from original dataframe to featurized
-    dataframe, use metadata_cols argument.
-    
     Use 'fast' argument to run featurization with less
     features, but very quickly for large datasets.
 
@@ -408,9 +403,8 @@ def featurize(
     'composition_features' or 'composition_ox_features' lists.
 
     Use the kwargs to return the list of references used,
-    remove dataframe columns which are constant,
-    remove dataframe columns which contain nans,
-    or remove dataframe columns which are non-numeric.
+    remove dataframe columns which are constant or
+    remove dataframe columns which contain nans.
 
     ================= Useful links =======================
     Matminer summary table of features:
@@ -506,20 +500,8 @@ def featurize(
     # remove columns containing a nan
     if remove_nan_cols:
         feat = feat.dropna(axis=1)
-    # remove non-numeric columns
-    if remove_nonnumeric_cols:
-        feat = feat.select_dtypes(include=[np.number])
     # remove empty references
     references = [r[0] for r in references if r]
-    
-    # add metadata to featurized data
-    for c in metadata_cols:
-        # if its already there, update it
-        if c in feat.columns:
-            feat[c] = np.array(df[c])
-        # if not, insert it at the front
-        else:
-            feat.insert(0, c, np.array(df[c]))
     
     print('Kept {} / {} new features for {} materials.'.format(
         len(list(feat)), num_new_features, len(feat)))
