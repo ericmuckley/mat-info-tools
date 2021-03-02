@@ -17,6 +17,7 @@ This module contains material informatics tools for:
 # standard imports
 import os
 import time
+import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -66,6 +67,18 @@ plt.rcParams.update({
     #'figure.dpi': dpi,
 })
 
+
+def write_json(data, filepath):
+    """Write JSON data to a filepath"""
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+
+def read_json(filepath):
+    """Read a json file from its filepath"""
+    with open(filepath) as f:
+        data = json.load(f)
+    return data
 
 
 def create_polynomial_features(df, cols, target, order=3, display=100):
