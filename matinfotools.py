@@ -117,7 +117,7 @@ def create_polynomial_features(df, cols, target, order=3, display=100):
     print('Total runtime: {} min'.format(round((time.time() - starttime)/60, 2)))
     print('{} total Pearson r^2 correlation coefficients:'.format(len(polyfeat_dict)))
     for k in list(polyfeat_dict)[:100]:
-        print('{:6}   {}'.format(round(polyfeat_dict[k], 5), k))
+        print('{:6}   {}'.format(round(polyfeat_dict[k], 4), k))
     return polyfeat_dict
 
 
