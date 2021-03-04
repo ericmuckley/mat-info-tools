@@ -81,7 +81,7 @@ def read_json(filepath):
     return data
 
 
-def create_polynomial_features(df, cols, target, order=3, display=100):
+def create_polynomial_features(df, cols, target, order=3):
     """
     Generate new features (columns) of a dataframe using polynomial
     combinations of existing column names. The purpose is to try to
@@ -96,9 +96,22 @@ def create_polynomial_features(df, cols, target, order=3, display=100):
     Returns: Dict with new column names sorted by their r^2 correlation with target
     """
     starttime = time.time()
+    cols = list(cols)
+    
+    # get highest existing r^2 value to try to beat
+    r2_goal = np.max([
+        np.square(stats.pearsonr(df[c], df[target])[0]) for c in cols])
+
     # instantiate polynomial feature model
     polyfeats = PolynomialFeatures(order, include_bias=False)
-    # inputs for poly feats 
+    
+    # add inverse of columns tot allow for division
+    for c in cols:
+        if 0 not in df[c].values:
+            df["_inverse "+c] = 1/df[c].values
+        
+    # inputs for poly feats
+    cols += [c for c in list(df) if "_inverse" in c]
     inputs = df[cols]
     # get names and array of values of new features
     polyfeat_array = polyfeats.fit_transform(inputs.values)
@@ -110,16 +123,18 @@ def create_polynomial_features(df, cols, target, order=3, display=100):
         if not any([np.allclose(polyfeat_array[:, i], df[j]) for j in cols]):
             # find r^2 correlation of new feature with target
             r2 = np.square(stats.pearsonr(polyfeat_array[:, i], df[target])[0])
-            polyfeat_dict[n] = r2
+            # only keep better than existing features
+            if r2 > r2_goal:
+                polyfeat_dict[n] = r2
     # sort polyfeature dict by correlations
     polyfeat_dict = {k: v for k, v in sorted(
         polyfeat_dict.items(), key=lambda item: item[1], reverse=True)}
     print('Total runtime: {} min'.format(round((time.time() - starttime)/60, 2)))
-    print('{} total Pearson r^2 correlation coefficients:'.format(len(polyfeat_dict)))
-    for k in list(polyfeat_dict)[:100]:
+    print('Previous highest r^2 value: {}'.format(round(r2_goal, 2)))
+    print('{} new higher r^2 values:'.format(len(polyfeat_dict)))
+    for k in list(polyfeat_dict)[:20]:
         print('{:6}   {}'.format(round(polyfeat_dict[k], 4), k))
     return polyfeat_dict
-
 
    
 def read_json_file(filepath):
