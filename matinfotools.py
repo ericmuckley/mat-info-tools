@@ -225,7 +225,7 @@ def plot_setup(
 
 
 
-def bar_plot(x, y, n=50, width=0.5, rotation=90):
+def bar_plot(x, y, n=50, alpha=1, label=None, rotation=90):
     """
     Create bar plot instance. To change color of bars:
     for b in bars:
@@ -234,14 +234,14 @@ def bar_plot(x, y, n=50, width=0.5, rotation=90):
     """
     x, y = x[:n], y[:n]
     ha = 'center' if (rotation == 90) else 'right'
-    bars = plt.bar(np.arange(len(x)), y, width=width)
+    bars = plt.bar(np.arange(len(x)), y, width=0.5, alpha=alpha, label=label)
     plt.gca().set_xticks(np.arange(len(x)))
     plt.gca().set_xticklabels(list(x), rotation=rotation, ha=ha)
     plt.gca().set_xlim([-1, len(x)])
     return bars
 
 
-def bar_plot_h(x, y, n=30, height=0.5):
+def bar_plot_h(x, y, n=30, alpha=1, label=None):
     """
     Create horizonatal bar plot instance. To change color of bars:
     for b in bars:
@@ -249,7 +249,7 @@ def bar_plot_h(x, y, n=30, height=0.5):
     Use 'n' argument to limit the number of bars shown.
     """
     x, y = x[:n], y[:n]
-    bars = plt.barh(np.arange(len(x)), y[::-1], height=0.5)
+    bars = plt.barh(np.arange(len(x)), y[::-1], height=0.5, alpha=alpha, label=label)
     plt.gca().set_yticks(np.arange(len(x)))
     plt.gca().set_yticklabels(list(x)[::-1])
     plt.gca().set_ylim([-1, len(x)])
