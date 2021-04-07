@@ -202,7 +202,13 @@ def plot_setup(
     This can be called with matplotlib for setting axes labels,
     titles, axes ranges, and the font size of plot labels.
     This should be called between plt.plot() and plt.show() commands."""
+    plt.rcParams.update({
+        'xtick.labelsize': fsize,
+        'ytick.labelsize': fsize,
+    })
+    
     fig = plt.gcf()
+
     if xlabel:
         plt.xlabel(str(xlabel), fontsize=fsize)
     if ylabel:
