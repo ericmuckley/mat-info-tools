@@ -53,8 +53,8 @@ except ImportError:
 
 # change matplotlib settings to make plots look nicer
 FONTSIZE=16
-LINEWIDTH=2
-TICKWIDTH=2
+LINEWIDTH=1.5
+TICKWIDTH=1.5
 plt.rcParams.update({
     'xtick.labelsize': FONTSIZE,
     'ytick.labelsize': FONTSIZE,
@@ -63,6 +63,7 @@ plt.rcParams.update({
     'xtick.major.width': TICKWIDTH,
     'ytick.minor.width': TICKWIDTH,
     'ytick.major.width': TICKWIDTH,
+    'font.family': 'helvetica',#'Arial',
     'figure.facecolor': 'w',
     #'figure.dpi': dpi,
 })
@@ -81,6 +82,23 @@ def read_json(filepath):
     return data
 
 
+
+
+
+def drop_redundant_cols(df):
+    """
+    Drop constant columns and duplicated
+    columns from a Pandas datafame.
+    """
+    # drop columns in which all values are constant
+    df0 = df[[c for c in df if not pd.api.types.is_numeric_dtype(df[c])]].copy()
+    df = df[[c for c in df if pd.api.types.is_numeric_dtype(df[c])]]
+    df = df.loc[:, (df != df.iloc[0]).any()]
+    # drop duplicate columns, keeping only first column
+    df = df.T.drop_duplicates().T
+    df = pd.concat([df0, df], axis=1)
+    return df
+
 def create_polynomial_features(df, cols, target, order=3):
     """
     Generate new features (columns) of a dataframe using polynomial
@@ -96,16 +114,17 @@ def create_polynomial_features(df, cols, target, order=3):
     Returns: Dict with new column names sorted by their r^2 correlation with target
     """
     starttime = time.time()
-    cols = list(cols)
+    df = drop_redundant_cols(df)
+    cols = [c for c in cols if c in df]
     
     # get highest existing r^2 value to try to beat
-    r2_goal = np.max([
-        np.square(stats.pearsonr(df[c], df[target])[0]) for c in cols])
-
+    r2_goal = np.max([np.square(
+                stats.pearsonr(df[c], df[target])[0]
+            ) for c in list(df) if c != target and pd.api.types.is_numeric_dtype(df[c])])
     # instantiate polynomial feature model
     polyfeats = PolynomialFeatures(order, include_bias=False)
     
-    # add inverse of columns tot allow for division
+    # add inverse of columns to allow for division
     for c in cols:
         if 0 not in df[c].values:
             df["_inverse "+c] = 1/df[c].values
@@ -135,6 +154,10 @@ def create_polynomial_features(df, cols, target, order=3):
     for k in list(polyfeat_dict)[:20]:
         print('{:6}   {}'.format(round(polyfeat_dict[k], 4), k))
     return polyfeat_dict
+
+
+
+
 
    
 def read_json_file(filepath):
