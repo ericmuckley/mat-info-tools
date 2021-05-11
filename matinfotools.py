@@ -335,7 +335,7 @@ def df_to_heatmap(df, vmin=None, vmax=None, fontsize=14, colorbar=True,
         
      
     
-def plot_periodic_table(lw=1, c='k', alpha=1):
+def plot_periodic_table(lw=1, c='gray', alpha=1):
     """Create plot of periodic table lines for overlaying chemical data"""
     # coordinates for lines on the periodic table
     table_lines = [
@@ -374,8 +374,15 @@ def plot_periodic_table(lw=1, c='k', alpha=1):
     for tl in table_lines:
         plt.plot(tl[0], tl[1], c=c, lw=lw, alpha=alpha)
     plt.xlim([0, 19])
-    plt.ylim([8, 0])    
-    
+    plt.ylim([8, 0])
+    # remove plot borders
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
     
     
         
