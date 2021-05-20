@@ -23,6 +23,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import PolynomialFeatures
 from scipy.stats import stats
+from scipy.interpolate import splrep
+from scipy.interpolate import splev
 
 # for compiling plots into video
 try:
@@ -81,6 +83,28 @@ def read_json(filepath):
         data = json.load(f)
     return data
 
+
+
+def get_spline(old_x, old_y, new_x, k=2, s=0):
+    """
+    Get a spline fit from an x and y array on a new x array.
+    Inputs:
+    old_x: original x data
+    old_y: original y data
+    new_x: new x data on which to evaluate spline
+    k: degree of spine fit
+    s: smoothing factor for spline
+    Returns:
+    spline fit evaluated on new x values
+    """
+    # if the arrays are not sorted, sort them
+    if np.all(np.diff(a) >= 0):
+        
+        
+    # get spline parameters
+    spline_params = splrep(old_x, old_y, k=int(k), s=s)
+    # evaluate spline at new x values
+    return splev(new_x, spline_params)
 
 
 
