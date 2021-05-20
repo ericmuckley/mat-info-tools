@@ -98,8 +98,7 @@ def get_spline(old_x, old_y, new_x, k=2, s=0):
     spline fit evaluated on new x values
     """
     # if the arrays are not sorted, sort them
-    if np.all(np.diff(a) >= 0):
-        
+    #if np.all(np.diff(a) >= 0):
         
     # get spline parameters
     spline_params = splrep(old_x, old_y, k=int(k), s=s)
