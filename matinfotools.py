@@ -113,12 +113,15 @@ def drop_redundant_cols(df):
     Drop constant columns and duplicated
     columns from a Pandas datafame.
     """
-    # drop columns in which all values are constant
+    # get non-numeric columns
     df0 = df[[c for c in df if not pd.api.types.is_numeric_dtype(df[c])]].copy()
+    # get numeric columns
     df = df[[c for c in df if pd.api.types.is_numeric_dtype(df[c])]]
+    # drop numeric columns in which all values are constant
     df = df.loc[:, (df != df.iloc[0]).any()]
-    # drop duplicate columns, keeping only first column
+    # drop duplicate numeeric columns
     df = df.T.drop_duplicates().T
+    # re-combine non-numeric and numeric columns
     df = pd.concat([df0, df], axis=1)
     return df
 
@@ -138,7 +141,10 @@ def create_polynomial_features(df, cols, target, order=3):
     """
     starttime = time.time()
     df = drop_redundant_cols(df)
-    cols = [c for c in cols if c in df]
+    cols = [c for c in cols if all([
+        c in df,
+        pd.api.types.is_numeric_dtype(df[c]),
+    ])]
     
     # get highest existing r^2 value to try to beat
     r2_goal = np.max([np.square(
@@ -169,8 +175,13 @@ def create_polynomial_features(df, cols, target, order=3):
             if r2 > r2_goal:
                 polyfeat_dict[n] = r2
     # sort polyfeature dict by correlations
-    polyfeat_dict = {k: v for k, v in sorted(
-        polyfeat_dict.items(), key=lambda item: item[1], reverse=True)}
+    polyfeat_dict = {
+        k: v for k, v in sorted(
+            polyfeat_dict.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+    }
     print('Total runtime: {} min'.format(round((time.time() - starttime)/60, 2)))
     print('Previous highest r^2 value: {}'.format(round(r2_goal, 2)))
     print('{} new higher r^2 values:'.format(len(polyfeat_dict)))
