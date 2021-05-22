@@ -25,6 +25,8 @@ from sklearn.preprocessing import PolynomialFeatures
 from scipy.stats import stats
 from scipy.interpolate import splrep
 from scipy.interpolate import splev
+from scipy.optimize import curve_fit
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 # for compiling plots into video
 try:
@@ -34,7 +36,8 @@ try:
     import json
 except ImportError:
     print('Video packages not avilable')
-    
+
+
 
 try:
     # for featurizing materials data
@@ -69,6 +72,406 @@ plt.rcParams.update({
     'figure.facecolor': 'w',
     #'figure.dpi': dpi,
 })
+
+
+
+def plot_correlations(corr, annotate=False):
+    """Plot correlations between target variable and features,
+    using the corrrelation dataframe"""
+    xvar, yvar = "sr", "pr"
+    # plot all correlations
+    plt.scatter(corr[xvar]**2, corr[yvar]**2, c='cornflowerblue', s=60, edgecolor="k", lw=0.5, label="elements",)
+    if annotate:
+        for i in range(len(corr)):
+            plt.annotate(corr.index[i], (corr[xvar].iloc[i]**2, corr[yvar].iloc[i]**2))
+    # plot ox endmember features
+    corr0 = corr[[i.startswith("EF-ox-endmember") for i in corr.index]]
+    plt.scatter(corr0[xvar]**2, corr0[yvar]**2, c='limegreen', s=60, edgecolor="k", marker="s", lw=0.5, label="oxides",)
+    # plot engineered features
+    corr0 = corr[[i.startswith("EF--") and t in i for i in corr.index]]
+    plt.scatter(corr0[xvar]**2, corr0[yvar]**2, c='tomato', s=60, edgecolor="k", marker="D", lw=0.5, label="engineered",)
+    plt.xticks([0, 0.5, 1], [0, 0.5, 1])
+    plt.ylabel("r$^2$", fontsize=24,)
+    plt.yticks([0, 0.5, 1], [0, 0.5, 1])
+    if t == 'Tg [K]':
+        plt.legend(fontsize=14)
+    plt.title(t, fontsize=24)
+    mit.plot_setup(xlabel="r$_s^2$", fsize=24, limits=(0, 1, 0, 1), size=(4,4),)
+    plt.show()
+
+
+
+def plot_best_feature(df, corr, t, linear_fit=True, colorbar=False):
+    """Plot the most linear feature with tthe target variable"""
+    xvar, yvar = corr.index[0], t
+    colors = [len(c) for c in df["comp"]]
+    plt.scatter(
+        df[xvar], df[yvar],
+        #c='cornflowerblue',
+        c=colors,
+        cmap="plasma",
+        vmin=1,
+        vmax=12,
+        s=40, edgecolor="w", lw=0.2,)
+    if linear_fit:
+        xmin, xmax = np.min(df[xvar]), np.max(df[xvar])
+        # perform linear fit
+        r2 = corr["r2"].iloc[0]
+        print(f"r^2: {round(r2, 2)}")
+        slope, intercept, _, _, lin_err = stats.linregress(df[xvar], df[yvar])
+        xfit = np.linspace(xmin, xmax, 15)
+        yfit = xfit * slope + intercept
+        plt.plot(xfit, yfit, lw=1, c="k")
+        plt.annotate("r$^2$: {}".format(round(r2, 2)), (0.65, 0.25), xycoords='figure fraction', fontsize=24)
+    if colorbar:
+        cbar = plt.colorbar()
+        cbar.set_ticks([1, 4, 8, 12])
+    mit.plot_setup(xlabel=xvar.replace("EF-ox-endmember", "EF-ox"), ylabel=t, fsize=24, size=(4,4),)    
+    plt.show()
+
+    
+
+def remove_target_outliers(df, target, percentile=1):
+    """Remove the outliers of a target variable"""
+    # drrop nans
+    df = df[df[t].notna()].dropna(axis=1)
+    # sort by target value
+    a = df[df[target].notna()][target].sort_values()
+    # number of samples to clip
+    clip_n_samples = int(percentile*len(a)/100)
+    # keep indices inside the clip region
+    keep_idx = a.index[clip_n_samples:-clip_n_samples]
+    return df.loc[keep_idx]
+
+
+def train_model(df, input_cols, target_col, splits, model_type, plot_pva=True, verbose=False):
+    """
+    Train an ML model using a dtafrme, target column,
+    and dict of train-test splits.
+    
+    Inputs:
+    df: dataframe containing the data
+    input_cols: column names which should be useed as model input feautures
+    target_col: column name to use as model output
+    model_type: type of model. Choose one of ["RF", "linear"]
+    splits: a dict of train-test splits to use for model cross-validation.
+    splits should have the form
+        splits {
+            "split1": "train": train_idx, "test": test_idx},
+            "split2": "train": train_idx, "test": test_idx},
+        }
+    where the keys in splits are the split names ( they can be anything) and 
+    the train_idx and test_idx are indices of the dtaaframe to use
+    for model training and testing.
+    plot_pva: boolean whether to show PVA plot after model training
+    verbose: boolean whether to show results of each train-test split
+    
+    Output:
+    results: dataframe summarizing the results of model testing
+    model: trained model
+    """
+    results = {k: [] for k in [
+        'sample',
+        'actual',
+        'predicted',
+        'std',
+        'error',
+        'system',
+        'split',
+        'source',
+        'importances',
+        'inputs',
+        'targets',
+        'class',
+    ]}
+    
+    print(f"target: {target_col}, inputs: {len(input_cols)}, train-test splits: {len(splits)}, samples: {len(df)}")
+    
+    #model = LinearRegression()
+    #model = ElasticNet()
+    #model = RandomForestRegressorCov()
+    #model = RFRlolo()
+    #model = SVR()
+    
+    
+    model_dict = {
+        "RF": RandomForestRegressorCov(),
+        "linear": LinearRegression(),
+    }
+
+    model = model_dict[model_type]
+    
+    starttime = time()
+    # loop over each holdout set for cross-validation
+    for si, s in enumerate(splits):
+        # get inidices of training and testing rows
+        test_idx = splits[s]["test"]
+        train_idx = splits[s]["train"]
+        # get training and testing inputs and outputs
+        train_in = df.loc[train_idx][input_cols].values
+        train_out = df.loc[train_idx][target_col].values
+        test_in = df.loc[test_idx][input_cols].values
+        test_out = df.loc[test_idx][target_col].values
+
+        # fit model and make predictions on test samples
+        model.fit(train_in, train_out)
+        
+
+        if model_type == "RF":
+            # for custom random forest covariance models
+            importances = list(model.feature_importances_)
+            pred, std, _ = model.predict(test_in)
+            
+        elif model_type == "lolo":
+            # for lolopy models
+            importances = list(model.feature_importances_)
+            pred, std = model.predict(test_in, return_std=True)
+                        
+        elif model_type == "linear":
+            # for linear models
+            importances = model.coef_
+            pred, std = model.predict(test_in), [0]*len(test_in)
+            
+        else:
+            pred, std = model.predict(test_in), [0]*len(test_in)
+            importances = [0]*len(input_vars)
+
+        # save results
+        results['split'] += [s]*len(test_out)
+        results['sample'] += list(test_idx)
+        results['actual'] += list(test_out)
+        results['predicted'] += list(pred)
+        results['std'] += list(std)
+        results['error'] += list(np.subtract(test_out, pred))
+        results['system'] += list(np.full(len(test_out), s))
+        results['source'] += list(df.loc[test_idx]['source'])
+        results['class'] += list(df.loc[test_idx]['class'])
+        results['importances'] += [importances for _ in range(len(test_out))]
+        results['inputs'] += [input_cols for _ in range(len(test_out))]
+        results['targets'] += [target_col for _ in range(len(test_out))]
+
+        if verbose:
+            ndme0 = round(mit.get_rmse(np.subtract(test_out, pred), rounding=6) / np.std(test_out), 3)
+            print('{:2}/{:2}, {:10} NDME: {:5}, {:5} min'.format(
+                si+1, len(splits), s, ndme0, round((time()-starttime)/60, 2)))
+        
+        if 0:  # to plot PVA for each holdout set
+            plt.scatter(test_out, pred, s=3)
+            plt.plot([np.min(test_out), np.max(test_out)], [np.min(test_out), np.max(test_out)], c="k")
+            mit.plot_setup(size=(4,2), xlabel="Actual", ylabel="Predicted", title=s)
+            plt.show()
+
+    results = pd.DataFrame(results)
+    results = results.set_index('sample')
+    rmse = np.sqrt(np.mean(np.square(results['error'])))
+    ndme = rmse / np.std(results['actual'])
+    print('NDME: {}'.format(round(ndme, 3)))
+    
+    # if using a linear model, use bootstraping to estimate prediction uncertainties
+    if model_type == "linear":
+
+        # loop over each sample
+        for ss in results.index.unique():
+            # if the same sample was predicted in multiple train-test splits
+            if len(results.loc[ss]) > 1:
+                # use st dev in predictions for the prediction uncertainty
+                results.loc[ss, "std"] = np.std(results.loc[ss, "predicted"])
+
+
+    if plot_pva:
+        plotlims = [results["actual"].min(), results["actual"].max()]
+        plt.hist2d(results['actual'], results['predicted'], bins=100, cmap="gnuplot2_r", vmin=0, vmax=15)
+        #plt.scatter(results['actual'], results['predicted'], s=3,)
+
+        plt.plot(plotlims, plotlims, c="k", lw=1)
+        mit.plot_setup(
+            xlabel="Actual", ylabel="Predicted",
+            title=target_col, size=(4,4), limits=[plotlims[0]*0.95, plotlims[1]*1.05]*2)
+        plt.show()
+    
+    
+    # finally, train model on entire dataset to export the fully-trained model
+    model.fit(df[input_cols].values, df[target_col].values)
+    
+    return results, model
+
+
+def bootstrap(arr, n_samples, n_trials):
+    """
+    Sample an array multiple times with dynamic
+    probabilities to ensure that the array is sampled
+    evenly over all the trials.
+    
+    Inputs
+        arr: (array-like) sequence of elements to sample
+        n_samples: (int) number of elements to sample per trial
+        n_trials: (int) number of trials
+    Returns
+        list of lists, where each list is one trial of samples
+    """
+    if n_samples > len(arr):
+        raise ValueError("'n_samples' must not be larger than the length of 'array_to_sample'")
+    # make sure input array is a numpy array so it
+    # can be indexed by another array
+    arr = np.array(arr)
+    # get indices of input array
+    all_indices = range(len(arr))
+    # initial probabilities are uniform
+    prob = np.full(len(arr), 1) / len(arr)
+    # the initial uniform probability for each sample
+    prob0 = prob[0]
+    # loop over each trial to get a new sample set
+    samples = []
+    for t in range(n_trials):
+        # select some indices randomly by using probabilities
+        s = np.random.choice(all_indices, size=n_samples, replace=False, p=prob)
+        samples.append(list(arr[s]))
+        # update probabilities so previously-chosen samples
+        # are less likely to be chosen during the next round.
+        # decrease probabilities of selected samples
+        prob[s] -= prob0
+        # increase probabilities of non-selected samples
+        prob[~s] += prob0
+    return samples
+
+
+def get_bootstrap_splits(arr, n_samples, n_trials):
+    """
+    Sample an array multiple times with dynamic
+    probabilities to ensure that the array is sampled
+    evenly over all the trials.
+    
+    Inputs
+        arr: (array-like) sequence of elements to sample
+        n_samples: (int) number of elements to sample per trial
+        n_trials: (int) number of trials
+    Returns
+        dict of train and test indices
+    """
+    if n_samples > len(arr):
+        raise ValueError("'n_samples' must not be larger than the length of 'array_to_sample'")
+    # make sure input array is a numpy array so it
+    # can be indexed by another array
+    arr = np.array(arr)
+    # get indices of input array
+    all_indices = range(len(arr))
+    # initial probabilities are uniform
+    prob = np.full(len(arr), 1) / len(arr)
+    # the initial uniform probability for each sample
+    prob0 = prob[0]
+    # loop over each trial to get a new sample set
+    splits = {}
+    for t in range(n_trials):
+        # select some indices randomly by using probabilities
+        s = np.random.choice(all_indices, size=n_samples, replace=True)
+        splits[t] = {"train": arr[s], "test": arr[[ss for ss in all_indices if ss not in s]]}
+    return splits
+
+
+def get_new_feats(corr, N_COMBO_FEATS=10, strategy="best"):
+    """Get new features using combinations of existting features"""
+    rand_feats = corr.index[np.random.randint(0, high=len(corr), size=N_COMBO_FEATS)]
+    best_feats = [f for f in list(corr.index)[:N_COMBO_FEATS] if f not in TARGETS]
+    half_feats = np.unique([rand_feats[:int(N_COMBO_FEATS/2)]] + [best_feats[:int(N_COMBO_FEATS/2)]])
+    if strategy == "random":
+        feats_to_permute = rand_feats
+    elif strategy == "best":
+        feats_to_permute = best_feats
+    elif strategy == "half":
+        feats_to_permute = half_feats
+    else:
+        raise Exception(f'Invalid stragegy. Try best, random, or half.')
+    print('{} features to permute'.format(2*len(feats_to_permute)))
+    mit.create_polynomial_features(
+        df0,
+        cols=feats_to_permute,
+        target=t,
+        order=4,
+    )
+
+
+def gaussian(x, amplitude):
+    return amplitude * np.exp(-(x**2) / 2 )
+
+class RandomForestRegressorCov(RandomForestRegressor):
+    """
+    Custom wrapper for sklearn RandomForest regressor
+    which returns random forest predictions
+    along with std and predictions by all estimators.
+    """
+    def predict(self, X):
+        preds = RandomForestRegressor.predict(self, X)
+        est_preds = np.empty((len(X), len(self.estimators_)))
+        # loop over each tree estimator in forest and use it to predict
+        for ind, est in enumerate(self.estimators_):
+            est_preds[:,ind] = est.predict(X)
+        if not np.allclose(np.mean(est_preds, axis=1), preds):
+            print('Mean over estimators not equal to predictions')
+        return preds, np.std(est_preds, axis=1), list(est_preds)
+
+
+def get_correlations_w_target(df, tar_var, input_vars):
+    """
+    Get correlations between a target variable and other
+    variables in a dataframe.
+    Inputs:
+    df: dataframe
+    tar_var: column name of the target variable
+    input_vars: column names with which to find correlations with target
+    """
+    input_vars =[i for i in input_vars if i != tar_var]
+    # create dataframe with basic stats
+    corr = pd.DataFrame({
+            k: {
+                'pr': stats.pearsonr(df[k], df[tar_var])[0],
+                'sr': stats.spearmanr(df[k], df[tar_var])[0],
+                'variance': np.var(df[k]),
+                'std': np.std(df[k]),
+                'n_unique': len(np.unique(df[k])),
+                'unique_frac': len(np.unique(df[k])) / len(df)
+            } for k in input_vars
+        }).T
+    # get total correlation column
+    corr['r_tot'] = np.sqrt(np.square(corr['pr']) + np.square(corr['sr']))
+    corr['r2'] = np.square(corr['pr'])
+    # sort values
+    corr = corr.sort_values('r2', ascending=False)
+    return corr
+
+
+def get_input_correlations(df, input_vars=None):
+    """
+    Get r^2 correlations between different input features.
+    Inputs:
+    df: dataframe with features
+    input_vars: list of column names to use as input features
+    """
+    if input_vars is None:
+        input_vars = [c for c in list(df) if pd.api.types.is_numeric_dtype(df[c])]
+    # get all pairs of input feature combinations
+    pairs = itertools.combinations(input_vars, 2)
+    # loop over each pair of features and get r-squared correlation between them
+    r2s = []
+    for p in pairs:
+        r2 = np.square(stats.pearsonr(df[p[0]], df[p[1]])[0])
+        r2s.append([p[0], p[1], round(r2, 4)])
+    r2df = pd.DataFrame(r2s, columns=['1', '2', 'r2']).sort_values(
+        'r2', ascending=False, ignore_index=True)
+    return r2df
+
+def drop_redundant_cols(df):
+    """
+    Drop constant columns and duplicated
+    columns from a Pandas datafame.
+    """
+    # drop columns in which all values are constant
+    df0 = df[[c for c in df if not pd.api.types.is_numeric_dtype(df[c])]].copy()
+    df = df[[c for c in df if pd.api.types.is_numeric_dtype(df[c])]]
+    df = df.loc[:, (df != df.iloc[0]).any()]
+    # drop duplicate columns, keeping only first column
+    df = df.T.drop_duplicates().T
+    df = pd.concat([df0, df], axis=1)
+    return df
 
 
 def write_json(data, filepath):
@@ -141,10 +544,8 @@ def create_polynomial_features(df, cols, target, order=3):
     """
     starttime = time.time()
     df = drop_redundant_cols(df)
-    cols = [c for c in cols if all([
-        c in df,
-        pd.api.types.is_numeric_dtype(df[c]),
-    ])]
+    cols = [c for c in cols if c in df]
+    cols = [c for c in df if pd.api.types.is_numeric_dtype(df[c])]
     
     # get highest existing r^2 value to try to beat
     r2_goal = np.max([np.square(
