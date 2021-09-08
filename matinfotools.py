@@ -522,7 +522,7 @@ def drop_redundant_cols(df):
     df = df[[c for c in df if pd.api.types.is_numeric_dtype(df[c])]]
     # drop numeric columns in which all values are constant
     df = df.loc[:, (df != df.iloc[0]).any()]
-    # drop duplicate numeeric columns
+    # drop duplicate numeric columns
     df = df.T.drop_duplicates().T
     # re-combine non-numeric and numeric columns
     df = pd.concat([df0, df], axis=1)
